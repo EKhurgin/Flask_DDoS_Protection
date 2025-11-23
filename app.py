@@ -1,11 +1,14 @@
 from flask import Flask, request, make_response
 import time
 import logging
+import threading
 
 ip_requests = {}
 
 MAX_REQUESTS = 5
 TIME_WINDOW = 10 #in seconds
+
+lock = threading.Lock()
 
 
 app = Flask(__name__)
@@ -20,20 +23,28 @@ logging.basicConfig(
 
 def rate_limited(ip):
     now = time.time()
-    if ip not in ip_requests:
-        ip_requests[ip] = []
+    with lock:
+        if ip not in ip_requests:
+            ip_requests[ip] = []
 
-    ip_requests[ip] = [t for t in ip_requests[ip] if now - t < TIME_WINDOW]
+        ip_requests[ip] = [t for t in ip_requests[ip] if now - t < TIME_WINDOW]
+
+        ip_requests[ip].append(now)
+
+        count = len(ip_requests[ip])
     
-    print(f"IP {ip} has {len(ip_requests[ip])} requests in the last {TIME_WINDOW} seconds")
-    logging.info(f"IP: {ip}, requests in window: {len(ip_requests[ip])}")
-    for handler in logging.getLogger().handlers:
-        handler.flush()
+        if count > MAX_REQUESTS:
+            print(f"IP {ip} blocked! {count} requests in last {TIME_WINDOW} seconds")
+            logging.info(f"IP: {ip} blocked! {count} requests in window")
+        else:
+            print(f"IP {ip} allowed: {count} requests in last {TIME_WINDOW} seconds")
+            logging.info(f"IP: {ip}, requests in window: {count}")
+        for handler in logging.getLogger().handlers:
+            handler.flush()
 
-    ip_requests[ip].append(now)
-    if len(ip_requests[ip]) >= MAX_REQUESTS:
-        return True
-    return False
+        return count > MAX_REQUESTS
+
+
 
 @app.route("/secure")
 def secure_area():
