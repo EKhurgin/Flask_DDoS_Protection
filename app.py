@@ -24,13 +24,15 @@ def rate_limited(ip):
         ip_requests[ip] = []
 
     ip_requests[ip] = [t for t in ip_requests[ip] if now - t < TIME_WINDOW]
+    
+    print(f"IP {ip} has {len(ip_requests[ip])} requests in the last {TIME_WINDOW} seconds")
+    logging.info(f"IP: {ip}, requests in window: {len(ip_requests[ip])}")
+    for handler in logging.getLogger().handlers:
+        handler.flush()
 
-    logging.info(f"IP: {ip}, requests in window: {len(ip_requests[ip]) +1}")
-
-
+    ip_requests[ip].append(now)
     if len(ip_requests[ip]) >= MAX_REQUESTS:
         return True
-    ip_requests[ip].append(now)
     return False
 
 @app.route("/secure")

@@ -5,12 +5,12 @@ URL = "http://127.0.0.1:5000/secure"
 
 def hit_secure():
     try:
-        requests.get(URL)
+        requests.get(URL, auth=("admin","1234"))
     except:
         pass
 
 threads = []
-num_requests = 200  # try 500, 2000 later
+num_requests = 200  
 
 for _ in range(num_requests):
     t = threading.Thread(target=hit_secure)
